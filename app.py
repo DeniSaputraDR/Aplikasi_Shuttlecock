@@ -6,12 +6,23 @@ from keras.models import load_model
 from PIL import Image
 import base64
 import io
+from huggingface_hub import hf_hub_download
 
-app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = 'static/uploads'
-app.config['WEBCAM_FOLDER'] = 'static/webcam_capture'
+app = Flask(_name_)
 
-model = load_model('model/model_shuttlecock.h5')
+
+os.environ["HF_HOME"] = "/tmp/huggingface"
+TEMP_FOLDER = "/tmp"
+os.makedirs(TEMP_FOLDER, exist_ok=True)
+
+model_path = hf_hub_download(
+    repo_id="lutfirobbani/shuttlecock_model",
+    filename="model_shuttlecock.h5",
+    cache_dir="/tmp/huggingface"
+)
+
+model = load_model(model_path)
+
 class_names = ['Layak', 'Tidak Layak']
 
 def predict_image(image_path):
@@ -34,9 +45,17 @@ def predict_image(image_path):
 
     return label, confidence, saran, visual
 
+
 @app.route('/')
 def index():
     return render_template('index.html')
+
+
+def image_to_base64(image_path):
+    with open(image_path, "rb") as f:
+        encoded = base64.b64encode(f.read()).decode("utf-8")
+    return f"data:image/jpeg;base64,{encoded}"
+
 
 @app.route('/upload', methods=['POST'])
 def upload():
@@ -44,18 +63,26 @@ def upload():
         file = request.files['file']
         if file.filename != '':
             filename = secure_filename(file.filename)
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            filepath = os.path.join(TEMP_FOLDER, filename)
             file.save(filepath)
 
             label, confidence, saran, visual = predict_image(filepath)
 
-            return render_template('index.html', 
-                                   image_url=filepath,
-                                   label=label,
-                                   confidence=confidence,
-                                   saran=saran,
-                                   visual=visual)
+            image_data = image_to_base64(filepath)
+
+            os.remove(filepath)
+
+            return render_template(
+                'index.html',
+                image_url=image_data, 
+                label=label,
+                confidence=confidence,
+                saran=saran,
+                visual=visual
+            )
     return render_template('index.html', error="Upload gagal.")
+
+
 
 @app.route('/capture', methods=['POST'])
 def capture():
@@ -63,22 +90,25 @@ def capture():
     header, encoded = data_url.split(',', 1)
     img_data = base64.b64decode(encoded)
     image = Image.open(io.BytesIO(img_data))
-    filename = 'capture.jpg'
-    filepath = os.path.join(app.config['WEBCAM_FOLDER'], filename)
+    filepath = os.path.join(TEMP_FOLDER, "capture.jpg")
     image.save(filepath)
-
+    
     label, confidence, saran, visual = predict_image(filepath)
+    
+    image_data = image_to_base64(filepath)
+    
+    os.remove(filepath)
+    
+    return render_template(
+        'index.html',
+        image_url=image_data,
+        label=label,
+        confidence=confidence,
+        saran=saran,
+        visual=visual
+    )
 
-    return render_template('index.html', 
-                           image_url=filepath,
-                           label=label,
-                           confidence=confidence,
-                           saran=saran,
-                           visual=visual)
 
-# if __name__ == '__main__':
-#     app.run(host='0.0.0.0', port=5000, debug=True)
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 7860))  # penting: HuggingFace pakai $PORT
+if _name_ == "_main_":
+    port = int(os.environ.get("PORT", 7860))  
     app.run(host="0.0.0.0", port=port)
