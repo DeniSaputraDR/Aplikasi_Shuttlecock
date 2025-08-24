@@ -16,7 +16,7 @@ TEMP_FOLDER = "/tmp"
 os.makedirs(TEMP_FOLDER, exist_ok=True)
 
 model_path = hf_hub_download(
-    repo_id="lutfirobbani/shuttlecock_model",
+    repo_id="Denisptra/Shuttlecock",
     filename="model_shuttlecock.h5",
     cache_dir="/tmp/huggingface"
 )
