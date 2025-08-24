@@ -8,7 +8,7 @@ import base64
 import io
 from huggingface_hub import hf_hub_download
 
-app = Flask(_name_)
+app = Flask(__name__)
 
 
 os.environ["HF_HOME"] = "/tmp/huggingface"
@@ -109,6 +109,6 @@ def capture():
     )
 
 
-if _name_ == "_main_":
+if __name__ == "_main_":
     port = int(os.environ.get("PORT", 7860))  
     app.run(host="0.0.0.0", port=port)
